@@ -27,6 +27,8 @@
   --bar-h: 88px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --ease: cubic-bezier(0.22, 0.9, 0.3, 1);
+  --font-body: Figtree, Roboto, "Segoe UI", system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque", Figtree, Roboto, system-ui, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -88,7 +90,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: Roboto, "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.4;
   overscroll-behavior-y: none;
@@ -480,6 +482,12 @@ button, a { -webkit-user-select: none; user-select: none; }
 
 .pr { display: inline-flex; align-items: center; gap: 4px; color: var(--accent); background: var(--accent-wash); font-size: 12px; font-weight: 700; padding: 3px 9px 3px 7px; border-radius: 10px; }
 .pr .ic { width: 14px; height: 14px; }
+
+h1, h2, .title, .tile strong, .day-card strong, .hist-row.latest strong, .set-v, .row-date strong,
+.btn.big, .btn.primary, .step-value input, .c-label, .c-tip strong, .wk-title strong {
+  font-family: var(--font-display);
+}
+.logo { border-radius: 24px; box-shadow: var(--shadow); margin-bottom: 8px; }
 
 .quip { color: var(--ink-3); font-size: 13px; font-style: italic; text-align: center; }
 .quip.pr-line { color: var(--ink-2); font-size: 11px; font-style: normal; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }

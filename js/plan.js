@@ -12,7 +12,7 @@ export const EXERCISES = [
   ex('smith-press', 'Smith Press', 'Chest', 2.5, ['chest'], ['frontDelt', 'triceps'], plates),
   ex('incline-db', 'Incline Dumbbell Press', 'Chest', 2, ['chest', 'frontDelt'], ['triceps']),
   ex('chest-press', 'Machine Chest Press', 'Chest', 2.5, ['chest'], ['frontDelt', 'triceps']),
-  ex('pec-deck', 'Pec Deck', 'Chest', 2.5, ['chest'], ['frontDelt']),
+  ex('pec-deck', 'Seated Machine Fly', 'Chest', 2.5, ['chest'], ['frontDelt']),
   ex('cable-fly', 'Cable Fly', 'Chest', 2.5, ['chest'], ['frontDelt']),
   ex('low-high-fly', 'Low-to-High Cable Fly', 'Chest', 2.5, ['chest', 'frontDelt']),
   ex('lat-pulldown', 'Lat Pulldown, Wide Grip', 'Back', 2.5, ['lats'], ['biceps', 'rearDelt']),
@@ -44,14 +44,14 @@ const item = (exerciseId, sets, repMin, repMax, extra = {}) => ({ exerciseId, se
 const first = (rest) => ({ first: true, rest });
 
 export const PLAN = {
-  version: 2,
+  version: 3,
   days: [
     { id: 'upper-a', name: 'Upper A', items: [
       item('bench', 4, 6, 10, { ...first('2 min rest'), alt: ['db-bench', 'smith-press'] }),
       item('incline-db', 3, 8, 12, first('2 min rest')),
       item('pec-deck', 3, 10, 15, { alt: ['cable-fly'], hint: 'Stretch deep, pause 1 second' }),
       item('lat-pulldown', 3, 8, 12),
-      item('seated-row', 2, 8, 12, { alt: ['chest-row'] }),
+      item('seated-row', 2, 8, 12, { alt: ['chest-row', 'fn-diverging-low-row'] }),
       item('cable-lateral', 3, 12, 20),
       item('incline-curl', 2, 10, 15, { alt: ['hammer'] }),
     ] },
@@ -70,7 +70,7 @@ export const PLAN = {
       item('chest-press', 4, 8, 12, { ...first('2 min rest'), alt: ['db-bench'] }),
       item('low-high-fly', 3, 10, 15, { alt: ['pec-deck'] }),
       item('single-lat', 2, 10, 15, { repText: '10–15 per side', alt: ['lat-pulldown'] }),
-      item('chest-row', 2, 8, 12, { alt: ['seated-row'] }),
+      item('chest-row', 2, 8, 12, { alt: ['fn-diverging-low-row', 'seated-row'] }),
       item('cable-lateral', 3, 12, 20),
       item('oh-triceps', 2, 10, 15),
       item('hammer', 2, 10, 15, { alt: ['incline-curl'] }),

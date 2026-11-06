@@ -1,5 +1,5 @@
 // Bump VERSION on every release so the app fetches the new files.
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE = `gymlog-${VERSION}`;
 const FILES = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
@@ -21,7 +21,19 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  if (event.request.method !== 'GET' || url.origin !== location.origin) return;
+  if (event.request.method !== 'GET') return;
+  // Fonts are kept after the first visit, so they also work offline.
+  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
+    event.respondWith(
+      caches.match(event.request).then((hit) => hit || fetch(event.request).then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+        return response;
+      })),
+    );
+    return;
+  }
+  if (url.origin !== location.origin) return;
   event.respondWith(
     caches.match(event.request.mode === 'navigate' ? './' : event.request)
       .then((hit) => hit || fetch(event.request)),

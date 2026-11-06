@@ -342,9 +342,9 @@ function planItem(it) {
 function viewWelcome() {
   return `
     <section class="welcome">
-      ${bodyMap({ primary: ['chest', 'quads', 'glutes'], secondary: ['frontDelt', 'hamstrings'] })}
+      <img class="logo" src="icons/icon-192.png" alt="" width="96" height="96">
       <h1>GymLog</h1>
-      <p>Your workouts are ready, you pick one each time, and your data stays on your phone. Your FitNotes history comes later.</p>
+      <p>Your workouts are ready, you pick one each time, and your data stays on your phone.</p>
       <button class="btn primary big" data-a="loadPlan">Start with my plan</button>
       <button class="btn ghost big" data-a="loadDemo">Try it with sample history</button>
     </section>`;
@@ -1107,7 +1107,8 @@ const A = {
 
   loadPlan: async () => {
     // Keeps everything you already logged and only adds what is missing.
-    await db.putMany('exercises', EXERCISES.filter((e) => !state.exercises.has(e.id)));
+    // Plan details follow the plan; your own weight step stays.
+    await db.putMany('exercises', EXERCISES.map((e) => ({ ...e, step: state.exercises.get(e.id)?.step ?? e.step })));
     await db.setMeta('schema', PLAN);
     await db.setMeta('onboarded', true);
     await loadAll();
