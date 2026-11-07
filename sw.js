@@ -1,10 +1,10 @@
 // Bump VERSION on every release so the app fetches the new files.
-const VERSION = 'v5';
+const VERSION = 'v6';
 const CACHE = `gymlog-${VERSION}`;
 const FILES = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'js/app.js', 'js/logic.js', 'js/db.js', 'js/backup.js', 'js/chart.js', 'js/demo.js', 'js/humor.js', 'js/body.js', 'js/plan.js', 'js/theme.js', 'js/coach.js',
-  'icons/logo-v5-192.png', 'icons/logo-v5-512.png', 'icons/logo-v5-maskable-512.png',
+  'icons/logo-v6-192.png', 'icons/logo-v6-512.png', 'icons/logo-v6-maskable-512.png',
 ];
 
 self.addEventListener('install', (event) => {

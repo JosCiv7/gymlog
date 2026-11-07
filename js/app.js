@@ -342,7 +342,7 @@ function planItem(it) {
 function viewWelcome() {
   return `
     <section class="welcome">
-      <img class="logo" src="icons/logo-v5-192.png" alt="" width="96" height="96">
+      <img class="logo" src="icons/logo-v6-192.png" alt="" width="96" height="96">
       <h1>GymLog</h1>
       <p>Your workouts are ready, you pick one each time, and your data stays on your phone.</p>
       <button class="btn primary big" data-a="loadPlan">Start with my plan</button>
