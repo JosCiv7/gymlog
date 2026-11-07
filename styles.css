@@ -27,8 +27,8 @@
   --bar-h: 88px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --ease: cubic-bezier(0.22, 0.9, 0.3, 1);
-  --font-body: Figtree, Roboto, "Segoe UI", system-ui, sans-serif;
-  --font-display: "Bricolage Grotesque", Figtree, Roboto, system-ui, sans-serif;
+  --font-body: Nunito, Roboto, "Segoe UI", system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque", Nunito, Roboto, system-ui, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -487,6 +487,18 @@ h1, h2, .title, .tile strong, .day-card strong, .hist-row.latest strong, .set-v,
 .btn.big, .btn.primary, .step-value input, .c-label, .c-tip strong, .wk-title strong {
   font-family: var(--font-display);
 }
+/* Big titles: heavy and a little condensed, like a gym poster. */
+.title, .hero h1, .wk-head h1, .subhead h1, .done h1, .welcome h1, .sheet h2, .day-card strong {
+  font-stretch: 80%;
+  font-weight: 800;
+  letter-spacing: -0.005em;
+}
+.title { font-size: 34px; }
+.wk-head h1 { font-size: 31px; }
+.day-card strong { font-size: 20px; }
+.eyebrow, .section, .legend h3, .week-line { font-weight: 700; }
+.coach .eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; }
+.step-value input { font-stretch: 85%; }
 .logo { border-radius: 24px; box-shadow: var(--shadow); margin-bottom: 8px; }
 
 .quip { color: var(--ink-3); font-size: 13px; font-style: italic; text-align: center; }

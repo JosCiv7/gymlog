@@ -1555,8 +1555,8 @@ const A = {
       return;
     }
     if (!state.sets.length) {
-      toast('Token saved. You can restore your backup now.');
-      render();
+      toast('Token saved. Fetching your history...');
+      if (!(await autoRestore())) toast(state.gh.lastError ? `Could not fetch your history: ${state.gh.lastError}` : 'Token saved.', state.gh.lastError ? 'bad' : '');
       return;
     }
     await runBackup({ force: true });
@@ -1616,6 +1616,32 @@ const A = {
     render();
   },
 };
+
+/**
+ * Fetches your history from GitHub by itself when this phone has a token but no logs yet,
+ * for example after a fresh install. It never replaces logs that are already on the phone.
+ */
+async function autoRestore() {
+  if (!state.gh.token || state.sets.length || state.demo || !navigator.onLine) return false;
+  try {
+    const data = await fetchBackup(state.gh);
+    if (!data.sets.length) return false;
+    await replaceData(data, { demo: false });
+    await db.setMeta('dirty', false);
+    state.dirty = false;
+    if (!state.schema) await A.loadPlan();
+    state.gh.lastError = null;
+    await saveGh();
+    toast(`Your history is back: ${fmtNum(data.sets.length)} sets.`);
+    render();
+    return true;
+  } catch (err) {
+    state.gh.lastError = err.message === 'Failed to fetch' ? 'No connection to GitHub.' : err.message;
+    await saveGh();
+    render();
+    return false;
+  }
+}
 
 async function restoreFrom(data) {
   const sets = data.sets.length;
@@ -1762,7 +1788,7 @@ async function init() {
   }
   render();
   registerServiceWorker();
-  runBackup();
+  if (!(await autoRestore())) runBackup();
 }
 
 init();
