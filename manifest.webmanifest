@@ -1,6 +1,6 @@
 {
-  "name": "GymLog",
-  "short_name": "GymLog",
+  "name": "GymBro",
+  "short_name": "GymBro",
   "description": "Log sets, see your history and swap exercises in your training plan.",
   "lang": "en",
   "start_url": "./",

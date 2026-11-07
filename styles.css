@@ -707,3 +707,70 @@ h1, h2, .title, .tile strong, .day-card strong, .hist-row.latest strong, .set-v,
   *, *::before, *::after { animation: none !important; transition: none !important; }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }
+
+/* ---------- History ---------- */
+
+.row-date { flex-direction: column; width: 44px; height: 48px; gap: 0; line-height: 1.05; }
+.row-date small { font-size: 11px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.04em; }
+.row-date strong { font-family: var(--font-display); font-size: 19px; font-weight: 800; font-stretch: 85%; }
+.hrow { align-items: center; padding: 12px 12px 12px 14px; }
+.hrow .row-main strong { display: inline-flex; align-items: center; gap: 6px; }
+.hrow .row-thumb { width: 64px; opacity: 0.95; }
+.pr-badge { display: inline-flex; color: var(--accent); }
+.pr-badge .ic { width: 16px; height: 16px; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.tags em {
+  font-style: normal;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-wash);
+  color: var(--accent);
+}
+.section.month { justify-content: space-between; }
+.section.month span { font-weight: 500; color: var(--ink-3); }
+
+.heat-card { gap: 8px; }
+.heat { display: block; width: 100%; height: auto; }
+.heat text { font-size: 9px; fill: var(--ink-3); font-family: var(--font-body); font-weight: 600; }
+.heat rect, .heat-key i { fill: var(--surface-2); background: var(--surface-2); }
+.heat .l1, .heat-key .l1 { fill: color-mix(in srgb, var(--accent) 35%, var(--surface-2)); background: color-mix(in srgb, var(--accent) 35%, var(--surface-2)); }
+.heat .l2, .heat-key .l2 { fill: color-mix(in srgb, var(--accent) 65%, var(--surface-2)); background: color-mix(in srgb, var(--accent) 65%, var(--surface-2)); }
+.heat .l3, .heat-key .l3 { fill: var(--accent); background: var(--accent); }
+.heat .today { stroke: var(--ink); stroke-width: 1.4; }
+.heat-key { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--ink-3); }
+.heat-key .keys { display: inline-flex; align-items: center; gap: 3px; }
+.heat-key i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+.heat-key i:first-of-type { margin-left: 4px; }
+.heat-key i:last-of-type { margin-right: 4px; }
+
+/* Small history line of one exercise. */
+.spark { margin: 4px 0 0; display: flex; flex-direction: column; gap: 4px; }
+.spark svg { display: block; width: 100%; height: 56px; overflow: visible; }
+.spark .area { fill: var(--accent-wash); }
+.spark .line { fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.spark circle { fill: var(--surface); stroke: var(--accent); stroke-width: 1.6; vector-effect: non-scaling-stroke; }
+.spark circle.end { fill: var(--accent); }
+.spark figcaption { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--ink-3); }
+.spark figcaption strong { font-weight: 700; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.spark figcaption strong.up { color: var(--good); }
+.hist .spark { padding-top: 8px; border-top: 1px solid var(--line); margin-top: 4px; }
+
+.card-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.card-link a { display: inline-flex; align-items: center; gap: 4px; color: var(--ink); }
+.card-link a .ic { width: 16px; height: 16px; color: var(--ink-3); }
+.trend { display: inline-flex; align-items: center; gap: 3px; font-family: var(--font-body); font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); flex: none; }
+.trend .ic { width: 13px; height: 13px; }
+.trend.up { color: var(--good); background: color-mix(in srgb, var(--good) 12%, transparent); }
+
+/* Workouts of one exercise. */
+.srow { min-height: 58px; }
+.srow .row-main { gap: 6px; }
+.srow .row-main strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+.srow .bar { display: block; height: 5px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.srow .bar i { display: block; height: 100%; border-radius: inherit; background: var(--accent); opacity: 0.75; }
+.srow .trend { padding: 3px 7px; }
+.trend.down { color: var(--ink-3); }
+.c-pt { fill: var(--surface); stroke: var(--accent); stroke-width: 1.6; }
+.srow .slot { width: 56px; flex: none; display: flex; justify-content: flex-end; }

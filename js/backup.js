@@ -22,7 +22,7 @@ export function validateBackup(data) {
     data && data.app === 'gymlog' &&
     ['exercises', 'workouts', 'sets', 'notes'].every((k) => Array.isArray(data[k])) &&
     data.sets.every((s) => s.id && s.exerciseId && Number.isFinite(s.weight) && Number.isFinite(s.reps) && /^\d{4}-\d{2}-\d{2}$/.test(s.date));
-  if (!ok) throw new Error('This is not a valid GymLog backup file.');
+  if (!ok) throw new Error('This is not a valid GymBro backup file.');
   return data;
 }
 
@@ -39,6 +39,16 @@ function errorFor(status) {
   if (status === 401) return 'The token is invalid or expired. Create a new one.';
   if (status === 403 || status === 404) return 'No access. Check the repository name and the token permissions.';
   return `GitHub returned an error (${status}).`;
+}
+
+/** GitHub's own explanation, added to the message so a problem can be traced. */
+async function detail(res) {
+  try {
+    const body = await res.json();
+    return body?.message ? ` (GitHub: ${body.message})` : ` (${res.status})`;
+  } catch {
+    return ` (${res.status})`;
+  }
 }
 
 async function request(gh, path, options = {}) {
@@ -79,7 +89,12 @@ export async function pushBackup(gh, backup) {
     });
     if (res.ok) return;
     // 409: the file changed in the meantime, so retry with the newest version.
-    if (res.status !== 409 || attempt === 1) throw new Error(errorFor(res.status));
+    if (res.status === 409 && attempt === 0) continue;
+    // Reading worked a moment ago, so a refusal here means the token may only read.
+    if (res.status === 403 || res.status === 404) {
+      throw new Error(`The token can read but not save. On GitHub, edit the token and set Contents to "Read and write".${await detail(res)}`);
+    }
+    throw new Error(`${errorFor(res.status)}${await detail(res)}`);
   }
 }
 

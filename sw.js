@@ -1,5 +1,5 @@
 // Bump VERSION on every release so the app fetches the new files.
-const VERSION = 'v7';
+const VERSION = 'v8';
 const CACHE = `gymlog-${VERSION}`;
 const FILES = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',

@@ -8,13 +8,13 @@ import { EXERCISES, PLAN } from './plan.js';
 import { DONE_NO_PR, DONE_WITH_PR, DROP_LINES, pickStable, PR_LINES, SAME_LINES } from './humor.js';
 import {
   alternatives, compareTop, daysBetween, DEFAULT_STEP, fmtDate, fmtDateLong, fmtKg, fmtMonth, fmtNum, fmtRange, fmtRelative,
-  groupSessions, localDate, METRICS, MUSCLES, parseNumber, recordLabels, records, round2, series,
-  sideToTotal, summarizeSets, totalToSide,
+  e1rm, groupSessions, localDate, METRICS, MUSCLES, parseNumber, recordLabels, records, round2, series,
+  sideToTotal, summarizeSets, topSet, totalToSide,
 } from './logic.js';
 
 const DEFAULT_REPO = 'JosCiv7/gymlog-backup';
 const DEMO_VERSION = 3;
-const TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new?name=GymLog%20backup&description=GymLog%20backup&contents=write';
+const TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new?name=GymBro%20backup&description=GymBro%20backup&contents=write';
 
 const $app = document.getElementById('app');
 const $nav = document.getElementById('nav');
@@ -41,6 +41,7 @@ const state = {
   fresh: null,
   edit: null,
   historyLimit: 30,
+  sessionLimit: 30,
   exQuery: '',
   exMuscle: '',
   chart: { metric: 'heaviest', range: '1y' },
@@ -343,7 +344,7 @@ function viewWelcome() {
   return `
     <section class="welcome">
       <img class="logo" src="icons/logo-v6-192.png" alt="" width="96" height="96">
-      <h1>GymLog</h1>
+      <h1>GymBro</h1>
       <p>Your workouts are ready, you pick one each time, and your data stays on your phone.</p>
       <button class="btn primary big" data-a="loadPlan">Start with my plan</button>
       <button class="btn ghost big" data-a="loadDemo">Try it with sample history</button>
@@ -496,6 +497,7 @@ function historyCard(sessions, exerciseId) {
           <span>${h(fmtRelative(s.date))}</span>
           <strong>${h(summary(s.sets))}</strong>
         </div>`).join('')}
+      ${sparkline(exerciseId)}
     </a>`;
 }
 
@@ -672,17 +674,141 @@ function viewDone(id) {
     </main>`;
 }
 
+
+// ---------- Small history graphics ----------
+
+/** What the small chart of an exercise follows: minutes, reps without weight, or the heaviest weight. */
+function sparkMetric(exerciseId) {
+  if (isCardio(exerciseId)) return { key: 'reps', unit: 'min', label: 'Minutes' };
+  return setsOf(exerciseId).some((s) => s.weight > 0)
+    ? { key: 'heaviest', unit: 'kg', label: 'Heaviest weight' }
+    : { key: 'reps', unit: 'reps', label: 'Most reps' };
+}
+
+/**
+ * A small line of the last workouts of an exercise, without axes. With `until`, it ends on that
+ * date and marks it, so an old workout shows where it stood.
+ */
+function sparkline(exerciseId, { until = null, count = 12 } = {}) {
+  const metric = sparkMetric(exerciseId);
+  let points = series(setsOf(exerciseId), metric.key);
+  if (until) points = points.filter((p) => p.date <= until);
+  points = points.slice(-count);
+  if (points.length < 2) return '';
+  const W = 300;
+  const H = 64;
+  const pad = 7;
+  const values = points.map((p) => p.value);
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  const x = (i) => pad + (i / (points.length - 1)) * (W - 2 * pad);
+  const y = (v) => (hi === lo ? H / 2 : pad + (1 - (v - lo) / (hi - lo)) * (H - 2 * pad));
+  const xy = points.map((p, i) => [x(i), y(p.value)]);
+  const path = xy.map(([a, b], i) => `${i ? 'L' : 'M'}${a.toFixed(1)} ${b.toFixed(1)}`).join('');
+  const area = `${path}L${xy[xy.length - 1][0].toFixed(1)} ${H}L${xy[0][0].toFixed(1)} ${H}Z`;
+  const dots = xy.map(([a, b], i) => `<circle class="${i === xy.length - 1 ? 'end' : ''}" cx="${a.toFixed(1)}" cy="${b.toFixed(1)}" r="${i === xy.length - 1 ? 4.5 : 2.4}"/>`).join('');
+  const first = values[0];
+  const last = values[values.length - 1];
+  const trend = last > first ? 'up' : last < first ? 'down' : 'same';
+  const fmt = (v) => `${fmtNum(v)}${metric.unit === 'kg' ? ' kg' : ` ${metric.unit}`}`;
+  return `
+    <figure class="spark">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><path class="area" d="${area}"/><path class="line" d="${path}"/>${dots}</svg>
+      <figcaption><span>${h(metric.label)}, last ${points.length} workouts</span><strong class="${trend}">${h(fmt(first))} → ${h(fmt(last))}</strong></figcaption>
+    </figure>`;
+}
+
+let prCache = { key: '', ids: new Set() };
+
+/** The workouts in which at least one set beat every earlier set of that exercise. */
+function workoutsWithRecords() {
+  const key = `${state.sets.length}:${state.sets[state.sets.length - 1]?.ts ?? 0}`;
+  if (prCache.key === key) return prCache.ids;
+  const ids = new Set();
+  for (const list of state.setsByEx.values()) {
+    let heaviest = null;
+    let best = 0;
+    for (const s of list) {
+      if (s.est) continue;
+      const value = e1rm(s.weight, s.reps);
+      if (heaviest !== null && s.weight > 0 && (s.weight > heaviest || value > best + 0.001)) ids.add(s.workoutId);
+      if (heaviest === null || s.weight > heaviest) heaviest = s.weight;
+      if (value > best) best = value;
+    }
+  }
+  prCache = { key, ids };
+  return ids;
+}
+
+const mondayOf = (date) => {
+  const d = new Date(`${date}T12:00:00`);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return localDate(d);
+};
+
+/** Weeks in a row with at least one workout, up to this week. A week without one yet doesn't break it. */
+function weekStreak(dates) {
+  const weeks = new Set(dates.map(mondayOf));
+  const d = new Date(`${mondayOf(localDate())}T12:00:00`);
+  if (!weeks.has(localDate(d))) d.setDate(d.getDate() - 7);
+  let n = 0;
+  while (weeks.has(localDate(d))) {
+    n += 1;
+    d.setDate(d.getDate() - 7);
+  }
+  return n;
+}
+
+/** A calendar of the last weeks: one column per week, one square per day, darker with more sets. */
+function heatmap(setsPerDate, weeks = 26) {
+  const cell = 11;
+  const gap = 2.6;
+  const top = 15;
+  const today = localDate();
+  const start = new Date(`${mondayOf(today)}T12:00:00`);
+  start.setDate(start.getDate() - (weeks - 1) * 7);
+  let squares = '';
+  let labels = '';
+  let lastMonth = -1;
+  for (let w = 0; w < weeks; w += 1) {
+    for (let d = 0; d < 7; d += 1) {
+      const day = new Date(start);
+      day.setDate(start.getDate() + w * 7 + d);
+      const date = localDate(day);
+      if (date > today) continue;
+      if (day.getDate() <= 7 && d === 0 && day.getMonth() !== lastMonth) {
+        lastMonth = day.getMonth();
+        if (w < weeks - 1) labels += `<text x="${w * (cell + gap)}" y="10">${day.toLocaleDateString('en-GB', { month: 'short' })}</text>`;
+      }
+      const n = setsPerDate.get(date) ?? 0;
+      const level = n === 0 ? 0 : n < 4 ? 1 : n < 7 ? 2 : 3;
+      squares += `<rect class="l${level}${date === today ? ' today' : ''}" x="${w * (cell + gap)}" y="${top + d * (cell + gap)}" width="${cell}" height="${cell}" rx="3"/>`;
+    }
+  }
+  const width = weeks * (cell + gap) - gap;
+  const height = top + 7 * (cell + gap) - gap;
+  return `<svg class="heat" viewBox="0 0 ${width} ${height}" aria-hidden="true">${labels}${squares}</svg>`;
+}
+
 function viewHistory() {
   const workouts = [...state.workouts.values()]
     .filter((w) => w.finishedAt)
     .sort((a, b) => b.startedAt - a.startedAt);
   const counts = new Map();
   const exercisesPer = new Map();
+  const setsPerDate = new Map();
   for (const s of state.sets) {
     counts.set(s.workoutId, (counts.get(s.workoutId) ?? 0) + 1);
+    setsPerDate.set(s.date, (setsPerDate.get(s.date) ?? 0) + 1);
     if (!exercisesPer.has(s.workoutId)) exercisesPer.set(s.workoutId, new Set());
     exercisesPer.get(s.workoutId).add(s.exerciseId);
   }
+  const perMonth = new Map();
+  for (const w of workouts) perMonth.set(w.date.slice(0, 7), (perMonth.get(w.date.slice(0, 7)) ?? 0) + 1);
+  const withRecords = workoutsWithRecords();
+  const today = localDate();
+  const yearCount = workouts.filter((w) => w.date.slice(0, 4) === today.slice(0, 4)).length;
+  const streak = weekStreak(workouts.map((w) => w.date));
 
   let month = '';
   const rows = [];
@@ -690,14 +816,22 @@ function viewHistory() {
     const m = w.date.slice(0, 7);
     if (m !== month) {
       if (month) rows.push('</div>');
-      rows.push(`<h2 class="section">${h(fmtMonth(w.date))}</h2><div class="rows">`);
+      const n = perMonth.get(m) ?? 0;
+      rows.push(`<h2 class="section month">${h(fmtMonth(w.date))}<span>${plural(n, 'workout', 'workouts')}</span></h2><div class="rows">`);
       month = m;
     }
+    const ids = [...(exercisesPer.get(w.id) ?? [])];
+    const groups = [...new Set(ids.map((id) => state.exercises.get(id)?.muscle).filter((g) => g && g !== 'Other'))];
+    const weekday = new Date(`${w.date}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short' });
     rows.push(`
-      <a class="row" href="#/history/${h(w.id)}">
-        <span class="row-date"><strong>${h(w.date.slice(8, 10))}</strong></span>
-        <span class="row-main"><strong>${h(w.dayName)}</strong><small>${plural(exercisesPer.get(w.id)?.size ?? 0, 'exercise', 'exercises')} · ${plural(counts.get(w.id) ?? 0, 'set', 'sets')}</small></span>
-        ${icon('next')}
+      <a class="row hrow" href="#/history/${h(w.id)}">
+        <span class="row-date"><small>${h(weekday)}</small><strong>${h(w.date.slice(8, 10))}</strong></span>
+        <span class="row-main">
+          <strong>${h(w.dayName)}${withRecords.has(w.id) ? `<i class="pr-badge" title="New record">${icon('trophy')}</i>` : ''}</strong>
+          <small>${plural(ids.length, 'exercise', 'exercises')} · ${plural(counts.get(w.id) ?? 0, 'set', 'sets')}</small>
+          ${groups.length ? `<span class="tags">${groups.slice(0, 4).map((g) => `<em>${h(g)}</em>`).join('')}</span>` : ''}
+        </span>
+        <span class="row-thumb">${bodyMap(combineMuscles(ids.map(musclesOf)))}</span>
       </a>`);
   }
   if (month) rows.push('</div>');
@@ -705,9 +839,30 @@ function viewHistory() {
   return `
     <main class="page">
       <h1 class="title">History</h1>
-      ${workouts.length ? rows.join('') : '<p class="empty">No workouts yet. Finish one and it shows up here.</p>'}
+      ${workouts.length ? `
+        <div class="tiles">
+          <div class="tile"><strong>${perMonth.get(today.slice(0, 7)) ?? 0}</strong><span>this month</span></div>
+          <div class="tile"><strong>${yearCount}</strong><span>this year</span></div>
+          <div class="tile"><strong>${streak}</strong><span>week streak</span></div>
+        </div>
+        <section class="card heat-card">
+          ${heatmap(setsPerDate)}
+          <p class="heat-key"><span>Last 6 months</span><span class="keys">Fewer<i class="l1"></i><i class="l2"></i><i class="l3"></i>more sets</span></p>
+        </section>
+        ${rows.join('')}` : '<p class="empty">No workouts yet. Finish one and it shows up here.</p>'}
       ${workouts.length > state.historyLimit ? '<button class="btn ghost big more" data-a="moreHistory">Show more</button>' : ''}
     </main>`;
+}
+
+/** Up, same or down against the workout before, for one exercise. */
+function trendBadge(exerciseId, w) {
+  const sessions = groupSessions(setsOf(exerciseId));
+  const i = sessions.findIndex((s) => s.key === w.id);
+  if (i < 0 || !sessions[i + 1]) return '';
+  const result = compareTop(sessions[i].sets, sessions[i + 1].sets);
+  if (!result) return '';
+  const text = { up: 'Up', same: 'Same', down: 'Lower' }[result];
+  return `<span class="trend ${result}">${result === 'down' ? '' : icon(result)}${text}</span>`;
 }
 
 function viewWorkoutDetail(id) {
@@ -727,7 +882,7 @@ function viewWorkoutDetail(id) {
       </header>
       ${[...groups.entries()].map(([exId, list]) => `
         <section class="card">
-          <h2><a href="#/exercises/${h(exId)}">${h(exName(exId))}</a></h2>
+          <h2 class="card-link"><a href="#/exercises/${h(exId)}">${h(exName(exId))}${icon('next')}</a>${trendBadge(exId, w)}</h2>
           <ol class="setlist compact">
             ${list.map((s, i) => `
               <li><button class="set done" data-a="editSet" data-id="${h(s.id)}">
@@ -735,6 +890,7 @@ function viewWorkoutDetail(id) {
                 <span class="set-v">${setValue(s)}</span>
               </button></li>`).join('')}
           </ol>
+          ${sparkline(exId, { until: w.date })}
         </section>`).join('') || '<p class="empty">No sets in this workout.</p>'}
       <button class="btn ghost-danger big more" data-a="deleteWorkout" data-id="${h(id)}">Delete workout</button>
     </main>`;
@@ -766,6 +922,41 @@ function viewExercises() {
       <div id="ex-list">${exerciseRows()}</div>
       <button class="btn ghost big more" data-a="newExercise">${icon('plus')}New exercise</button>
     </main>`;
+}
+
+/** The workouts of one exercise per year, with a bar for the best line and the change from the time before. */
+function sessionRows(exerciseId, sessions) {
+  const metric = sparkMetric(exerciseId);
+  const valueOf = (s) => (metric.key === 'heaviest' ? topSet(s.sets).weight : Math.max(...s.sets.map((x) => x.reps)));
+  const shown = sessions.slice(0, state.sessionLimit);
+  const max = Math.max(...shown.map(valueOf), 1);
+  const perYear = new Map();
+  for (const s of sessions) perYear.set(s.date.slice(0, 4), (perYear.get(s.date.slice(0, 4)) ?? 0) + 1);
+  let year = '';
+  const out = [];
+  shown.forEach((s, i) => {
+    if (s.date.slice(0, 4) !== year) {
+      if (year) out.push('</div>');
+      year = s.date.slice(0, 4);
+      out.push(`<h2 class="section month">${year}<span>${plural(perYear.get(year), 'workout', 'workouts')}</span></h2><div class="rows">`);
+    }
+    const before = sessions[i + 1];
+    const result = before ? compareTop(s.sets, before.sets) : null;
+    const d = new Date(`${s.date}T12:00:00`);
+    const mark = result === 'up' ? `<span class="trend up">${icon('up')}</span>` : result === 'down' ? '<span class="trend down">Lower</span>' : '';
+    out.push(`
+      <a class="row srow" href="#/history/${h(s.key)}">
+        <span class="row-date"><small>${h(d.toLocaleDateString('en-GB', { month: 'short' }))}</small><strong>${d.getDate()}</strong></span>
+        <span class="row-main">
+          <strong class="num">${h(summary(s.sets))}</strong>
+          <span class="bar"><i style="width:${Math.max(4, Math.round((valueOf(s) / max) * 100))}%"></i></span>
+        </span>
+        <span class="slot">${mark}</span>
+      </a>`);
+  });
+  if (year) out.push('</div>');
+  if (sessions.length > shown.length) out.push('<button class="btn ghost big more" data-a="moreSessions">Show more</button>');
+  return out.join('');
 }
 
 function viewExerciseDetail(id) {
@@ -812,11 +1003,7 @@ function viewExerciseDetail(id) {
         <div class="rows">
           ${notes.slice(0, 10).map((n) => `<div class="row static"><span class="row-main"><strong>${h(n.text)}</strong><small>${h(fmtDate(n.date))}</small></span></div>`).join('')}
         </div>` : ''}
-      ${sessions.length ? `
-        <h2 class="section">Workouts</h2>
-        <div class="rows">
-          ${sessions.slice(0, 30).map((s) => `<div class="row static"><span class="row-main"><strong class="num">${h(summary(s.sets))}</strong><small>${h(fmtDate(s.date))}</small></span></div>`).join('')}
-        </div>` : ''}
+      ${sessions.length ? sessionRows(id, sessions) : ''}
     </main>`;
 }
 
@@ -1186,13 +1373,14 @@ const A = {
 
   step: (el) => {
     const { kind, dir, target } = el.dataset;
+    // Close the keyboard first, so a typed number is read before the step is added to it.
+    if (document.activeElement?.matches('.step-value input')) document.activeElement.blur();
     const scope = readDraftInputs(target);
     const exerciseId = exerciseFor(target);
     const bar = kind === 'weight' ? barOf(exerciseId) : null;
     // One step per side adds the plates on both ends. An empty bar is the lowest weight.
     const delta = kind === 'weight' ? exStep(exerciseId) * (bar === null ? 1 : 2) : isCardio(exerciseId) ? exStep(exerciseId) : 1;
     scope[kind] = Math.max(bar ?? 0, round2(scope[kind] + Number(dir) * delta));
-    document.activeElement?.blur?.();
     syncStepperUI(target);
     const value = el.parentElement.querySelector('.step-value');
     value.classList.remove('bump');
@@ -1468,6 +1656,11 @@ const A = {
     render();
   },
 
+  moreSessions: () => {
+    state.sessionLimit += 30;
+    render();
+  },
+
   deleteWorkout: async (el) => {
     const id = el.dataset.id;
     if (!(await ask({ title: 'Delete workout?', body: 'All sets from this workout will be removed.', confirm: 'Delete', danger: true }))) return;
@@ -1710,6 +1903,9 @@ document.addEventListener('focusin', (event) => {
 });
 
 document.addEventListener('focusout', (event) => {
+  // Only the number fields. The plus and minus buttons carry the same data, and reading the
+  // fields again when a button loses focus would undo the step it just made.
+  if (!event.target.matches('.step-value input')) return;
   const { target } = event.target.dataset;
   if (target) {
     readDraftInputs(target);
@@ -1729,7 +1925,7 @@ document.addEventListener('change', async (event) => {
   try {
     await restoreFrom(validateBackup(JSON.parse(await file.text())));
   } catch {
-    toast('This is not a valid GymLog backup file.', 'bad');
+    toast('This is not a valid GymBro backup file.', 'bad');
   }
 });
 

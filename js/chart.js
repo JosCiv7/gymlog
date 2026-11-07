@@ -47,6 +47,7 @@ export function drawLineChart(container, points, { unit = '' } = {}) {
       ${grid}${axisDates}
       <path class="c-area" d="${area}"/>
       <path class="c-line" d="${path}"/>
+      ${xy.length <= 80 ? xy.slice(0, -1).map(([a, b]) => `<circle class="c-pt" cx="${a.toFixed(1)}" cy="${b.toFixed(1)}" r="2.6"/>`).join('') : ''}
       <line class="c-cross" y1="${M.top}" y2="${bottom}" visibility="hidden"/>
       <circle class="c-dot c-end" cx="${endX}" cy="${endY}" r="4"/>
       <circle class="c-dot c-active" r="5" visibility="hidden"/>
