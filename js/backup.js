@@ -52,7 +52,10 @@ async function detail(res) {
 }
 
 async function request(gh, path, options = {}) {
+  // 'no-store': the file itself and its details share one ETag at GitHub, so a stored copy of
+  // the file could come back where the details (with the sha) were asked for.
   const res = await fetch(`${API}/repos/${gh.repo}/contents/${path}`, {
+    cache: 'no-store',
     ...options,
     headers: {
       Authorization: `Bearer ${gh.token}`,
@@ -69,13 +72,16 @@ async function currentSha(gh) {
   if (res.status === 404) {
     // A token without access also gets a 404, so check the repository itself.
     const repo = await fetch(`${API}/repos/${gh.repo}`, {
+      cache: 'no-store',
       headers: { Authorization: `Bearer ${gh.token}`, Accept: 'application/vnd.github+json' },
     });
     if (!repo.ok) throw new Error(errorFor(repo.status));
     return null;
   }
   if (!res.ok) throw new Error(errorFor(res.status));
-  return (await res.json()).sha;
+  const { sha } = await res.json();
+  if (typeof sha !== 'string') throw new Error('GitHub did not say which version of the backup is there. Try again in a minute.');
+  return sha;
 }
 
 export async function pushBackup(gh, backup) {
